@@ -66,9 +66,10 @@ simulate_Q <- function(data) {
     sim_M2_a <- rnorm(n, mean = predict(fit_M2, newdata = transform(newdat_a, M1 = sim_M1_a, L = sim_L_a)), sd = sigma_M2)
     
     ### randomly permute n values of the joint mediators (permutation): interventional or random analogue E
-    ### instead of the most likely M value, we randomly assign the M based on the distribution (MARGINAL) to each subject
-    G_a_M1 <- sample(sim_M1_a)
-    G_a_M2 <- sample(sim_M2_a)
+    ### instead of the most likely M value, we randomly assign the M based on the joint distribution to each subject
+    idx_a  <- sample(n)
+    G_a_M1 <- sim_M1_a[idx_a]
+    G_a_M2 <- sim_M2_a[idx_a]
     
     ## 3b: simulate mediators under A = a*
     newdat_as <- data
@@ -78,29 +79,34 @@ simulate_Q <- function(data) {
     sim_L_as  <- rnorm(n, mean = predict(fit_L, newdata = transform(newdat_as, M1 = sim_M1_as)), sd = sigma_L)
     sim_M2_as <- rnorm(n, mean = predict(fit_M2, newdata = transform(newdat_as, M1 = sim_M1_as, L = sim_L_as)), sd = sigma_M2)
     
-    ### random sample M from its distribution to replace the "naturally observed Ms" --> INTERVENTIONAL
-    G_as_M1 <- sample(sim_M1_as)
-    G_as_M2 <- sample(sim_M2_as)
+    ### random sample M from the joint distribution of M1 and M2 to replace the "naturally observed Ms" --> INTERVENTIONAL
+    idx_as  <- sample(n)
+    G_as_M1 <- sim_M1_as[idx_as]
+    G_as_M2 <- sim_M2_as[idx_as]
     
     ## 3c: estimate Qa,a, Qa,a*, Qa*,a, Qa*,a* 
     ### Qa,a
     #### Permutation: repeat M1 and M2 with the permuted G, then predict Y
-    newdata_Y <- data.frame(A = a, M1 = G_a_M1, L = sim_L_a, M2 = G_a_M2)
+    newdata_Y <- data.frame(A = a, M1 = G_a_M1, M2 = G_a_M2,
+                            L = rnorm(n, predict(fit_L, transform(newdat_a, M1 = G_a_M1)), sigma_L))
     newdata_Y[, C] <- data[, C]
     Q_store[k, "Qa_a"] <- mean(predict(fit_Y, newdata = newdata_Y))
     
     ### Qa,a*
-    newdata_Y <- data.frame(A = a, M1 = G_as_M1, L = sim_L_a, M2 = G_as_M2)
+    newdata_Y <- data.frame(A = a, M1 = G_as_M1, M2 = G_as_M2,
+                            L = rnorm(n, predict(fit_L, transform(newdat_a, M1 = G_as_M1)), sigma_L))
     newdata_Y[, C] <- data[, C]
     Q_store[k, "Qa_aStar"] <- mean(predict(fit_Y, newdata = newdata_Y))
     
     ### Qa*,a
-    newdata_Y <- data.frame(A = a_star, M1 = G_a_M1, L = sim_L_as, M2 = G_a_M2)
+    newdata_Y <- data.frame(A = a_star, M1 = G_a_M1, M2 = G_a_M2,
+                            L = rnorm(n, predict(fit_L, transform(newdat_as, M1 = G_a_M1)), sigma_L))
     newdata_Y[, C] <- data[, C]
     Q_store[k, "QaStar_a"] <- mean(predict(fit_Y, newdata = newdata_Y))
     
     ### Qa*,a*
-    newdata_Y <- data.frame(A = a_star, M1 = G_as_M1, L = sim_L_as, M2 = G_as_M2)
+    newdata_Y <- data.frame(A = a_star, M1 = G_as_M1, M2 = G_as_M2,
+                            L = rnorm(n, predict(fit_L, transform(newdat_as, M1 = G_as_M1)), sigma_L))
     newdata_Y[, C] <- data[, C]
     Q_store[k, "QaStar_aStar"] <- mean(predict(fit_Y, newdata = newdata_Y))
   }
